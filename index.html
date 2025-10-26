@@ -229,11 +229,15 @@
                 messageDiv.textContent = 'Retirement Date must be after the Date of Birth.';
                 return;
             }
+            
+            // --- ADJUSTMENT: Add 1 day to SOS for Age on Next Birthday calculation ---
+            const adjustedSosDate = new Date(sosDate);
+            adjustedSosDate.setDate(adjustedSosDate.getDate() + 1);
 
-            // --- Revised "Age on Next Birthday" Calculation as per new Excel ---
-            let ageYears = sosDate.getFullYear() - dobDate.getFullYear();
-            const monthDiff = sosDate.getMonth() - dobDate.getMonth();
-            const dayDiff = sosDate.getDate() - dobDate.getDate();
+            // --- Revised "Age on Next Birthday" Calculation (using adjustedSosDate) ---
+            let ageYears = adjustedSosDate.getFullYear() - dobDate.getFullYear();
+            const monthDiff = adjustedSosDate.getMonth() - dobDate.getMonth();
+            const dayDiff = adjustedSosDate.getDate() - dobDate.getDate();
 
             // Check if the birthday has occurred in the retirement year
             if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
@@ -274,7 +278,8 @@
             }
             
             const yearsToAdd = Math.round(purchaseValue);
-            const restorationDate = new Date(sosDate);
+            // Restoration Date uses original SOS Date
+            const restorationDate = new Date(sosDate); 
             restorationDate.setFullYear(restorationDate.getFullYear() + yearsToAdd);
 
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

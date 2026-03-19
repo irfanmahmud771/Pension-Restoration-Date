@@ -87,6 +87,7 @@
                         <p class="text-gray-600"><strong>Effective Policy Date:</strong> <span id="policyDateResult" class="font-bold text-indigo-600"></span></p>
                         <p class="text-gray-600"><strong>Restoration Date:</strong> <span id="restorationDateResult"></span></p>
                         <p class="text-gray-600"><strong>Age at Restoration:</strong> <span id="ageAtRestorationResult" class="font-bold text-indigo-600"></span></p>
+                        <p class="text-gray-600"><strong>Period Remaing in Restoration:</strong> <span id="periodRemainingResult" class="font-bold text-indigo-600"></span></p>
                     </div>
                 </div>
             </div>
@@ -193,7 +194,34 @@
         const policyDateResultSpan = document.getElementById('policyDateResult');
         const restorationDateResultSpan = document.getElementById('restorationDateResult');
         const ageAtRestorationResultSpan = document.getElementById('ageAtRestorationResult');
+        const periodRemainingResultSpan = document.getElementById('periodRemainingResult');
         const tableBody = document.getElementById('commutationTableBody');
+
+        function calculateCalendarDifference(startDate, endDate) {
+            const earlierDate = new Date(startDate);
+            const laterDate = new Date(endDate);
+
+            let years = laterDate.getFullYear() - earlierDate.getFullYear();
+            let months = laterDate.getMonth() - earlierDate.getMonth();
+            let days = laterDate.getDate() - earlierDate.getDate();
+
+            if (days < 0) {
+                months--;
+                const daysInPreviousMonth = new Date(laterDate.getFullYear(), laterDate.getMonth(), 0).getDate();
+                days += daysInPreviousMonth;
+            }
+
+            if (months < 0) {
+                years--;
+                months += 12;
+            }
+
+            return { years, months, days };
+        }
+
+        function formatPeriod(years, months, days) {
+            return `${years} ${years === 1 ? 'Year' : 'Years'}, ${months} ${months === 1 ? 'Month' : 'Months'}, ${days} ${days === 1 ? 'Day' : 'Days'}`;
+        }
 
         function populateTable() {
             tableBody.innerHTML = ''; // Clear existing rows
@@ -229,7 +257,7 @@
                 messageDiv.textContent = 'Retirement Date must be after the Date of Birth.';
                 return;
             }
-            
+
             // --- ADJUSTMENT: Add 1 day to SOS for Age on Next Birthday calculation ---
             const adjustedSosDate = new Date(sosDate);
             adjustedSosDate.setDate(adjustedSosDate.getDate() + 1);
@@ -260,7 +288,7 @@
                 messageDiv.textContent = `Calculation is only available for 'Age on Next Birthday' between ${minAge} and ${maxAge}. Your calculated age is ${ageNextBirthday}.`;
                 return;
             }
-            
+
             let purchaseValue;
             let effectivePolicyDateStr;
             const date2001 = new Date('2001-12-01');
@@ -276,10 +304,10 @@
                 purchaseValue = record.val_1966;
                 effectivePolicyDateStr = '01 Jul, 1966';
             }
-            
+
             const yearsToAdd = Math.round(purchaseValue);
             // Restoration Date uses original SOS Date
-            const restorationDate = new Date(sosDate); 
+            const restorationDate = new Date(sosDate);
             restorationDate.setFullYear(restorationDate.getFullYear() + yearsToAdd);
 
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -289,39 +317,32 @@
             const formattedRestorationDate = `${day} ${monthName}, ${year}`;
 
             // --- "Age at Restoration" Calculation ---
-            let tempDob = new Date(dobValue);
-            let ageYearsAtRestoration = restorationDate.getFullYear() - tempDob.getFullYear();
-            let ageMonthsAtRestoration = restorationDate.getMonth() - tempDob.getMonth();
-            let ageDaysAtRestoration = restorationDate.getDate() - tempDob.getDate();
+            const ageAtRestoration = calculateCalendarDifference(dobDate, restorationDate);
+            const formattedAgeAtRestoration = formatPeriod(
+                ageAtRestoration.years,
+                ageAtRestoration.months,
+                ageAtRestoration.days
+            );
 
-             if (ageDaysAtRestoration < 0) {
-                ageMonthsAtRestoration--;
-                const daysInPrevMonth = new Date(restorationDate.getFullYear(), restorationDate.getMonth(), 0).getDate();
-                ageDaysAtRestoration += daysInPrevMonth;
-            }
-             if (ageMonthsAtRestoration < 0) {
-                ageYearsAtRestoration--;
-                ageMonthsAtRestoration += 12;
-            }
+            // --- Period Remaining in Restoration ---
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
 
-            // --- Format Age at Restoration with new rules ---
-            let ageParts = [];
-            ageParts.push(`${ageYearsAtRestoration} Years`);
-
-            if (ageMonthsAtRestoration > 0) {
-                ageParts.push(ageMonthsAtRestoration === 1 ? '1 Month' : `${ageMonthsAtRestoration} Months`);
+            let formattedPeriodRemaining;
+            if (restorationDate <= today) {
+                formattedPeriodRemaining = '0 Years, 0 Months, 0 Days';
+            } else {
+                const periodRemaining = calculateCalendarDifference(today, restorationDate);
+                formattedPeriodRemaining = formatPeriod(
+                    periodRemaining.years,
+                    periodRemaining.months,
+                    periodRemaining.days
+                );
             }
-             if (ageDaysAtRestoration > 0) {
-                ageParts.push(ageDaysAtRestoration === 1 ? '1 Day' : `${ageDaysAtRestoration} Days`);
-            }
-            const formattedAgeAtRestoration = ageParts.join(' ');
-
 
             // --- Conditional Formatting for Restoration Date ---
-            const today = new Date();
-            today.setHours(0, 0, 0, 0); 
             restorationDateResultSpan.classList.remove('text-green-600', 'text-red-600', 'font-bold', 'flashing-text');
-            
+
             if (restorationDate <= today) {
                 restorationDateResultSpan.classList.add('text-green-600', 'font-bold', 'flashing-text');
             } else {
@@ -334,6 +355,7 @@
             policyDateResultSpan.textContent = effectivePolicyDateStr;
             restorationDateResultSpan.textContent = formattedRestorationDate;
             ageAtRestorationResultSpan.textContent = formattedAgeAtRestoration;
+            periodRemainingResultSpan.textContent = formattedPeriodRemaining;
             resultsDiv.classList.remove('hidden');
         });
 

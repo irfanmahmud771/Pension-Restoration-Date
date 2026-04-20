@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Pension Restore">
     <title>Pension Restoration Date Calculator</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="icons/icon-192.svg">
+    <link rel="apple-touch-icon" href="icons/icon-192.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -59,6 +66,14 @@
             <div class="text-center mb-8">
                 <h1 class="text-3xl font-bold text-gray-800">Pension Restoration Date Calculator</h1>
                 <p class="text-gray-500 mt-2">Enter your details to calculate your pension restoration date.</p>
+            </div>
+
+            <!-- App Install CTA -->
+            <div id="installAppSection" class="mb-6 hidden">
+                <button id="installAppBtn" class="w-full btn-primary font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Install App (Android / Windows)
+                </button>
+                <p id="installHint" class="text-xs text-center text-gray-500 mt-2 hidden">If install dialog doesn't appear, open browser menu and choose "Install app".</p>
             </div>
 
             <!-- Form Section -->
@@ -196,6 +211,12 @@
         const ageAtRestorationResultSpan = document.getElementById('ageAtRestorationResult');
         const periodRemainingResultSpan = document.getElementById('periodRemainingResult');
         const tableBody = document.getElementById('commutationTableBody');
+        const installAppSection = document.getElementById('installAppSection');
+        const installAppBtn = document.getElementById('installAppBtn');
+        const installHint = document.getElementById('installHint');
+
+        let deferredInstallPrompt = null;
+        const INSTALL_FLAG_KEY = 'pensionRestoreInstalled';
 
         function calculateCalendarDifference(startDate, endDate) {
             const earlierDate = new Date(startDate);
@@ -237,6 +258,45 @@
                 tableBody.appendChild(row);
             });
         }
+
+        function isRunningStandalone() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.startsWith('android-app://');
+        }
+
+        function isInstalled() {
+            return isRunningStandalone() || localStorage.getItem(INSTALL_FLAG_KEY) === 'true';
+        }
+
+        function updateInstallVisibility() {
+            const hideInstallCta = isInstalled();
+            installAppSection.classList.toggle('hidden', hideInstallCta);
+            installAppBtn.disabled = !deferredInstallPrompt;
+            installHint.classList.toggle('hidden', !!deferredInstallPrompt);
+        }
+
+        window.addEventListener('beforeinstallprompt', (event) => {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            updateInstallVisibility();
+        });
+
+        window.addEventListener('appinstalled', () => {
+            localStorage.setItem(INSTALL_FLAG_KEY, 'true');
+            deferredInstallPrompt = null;
+            updateInstallVisibility();
+        });
+
+        installAppBtn.addEventListener('click', async () => {
+            if (!deferredInstallPrompt) {
+                updateInstallVisibility();
+                return;
+            }
+
+            deferredInstallPrompt.prompt();
+            await deferredInstallPrompt.userChoice;
+            deferredInstallPrompt = null;
+            updateInstallVisibility();
+        });
 
         calculateBtn.addEventListener('click', () => {
             resultsDiv.classList.add('hidden');
@@ -359,7 +419,21 @@
             resultsDiv.classList.remove('hidden');
         });
 
-        document.addEventListener('DOMContentLoaded', populateTable);
+        document.addEventListener('DOMContentLoaded', () => {
+            populateTable();
+
+            if (isRunningStandalone()) {
+                localStorage.setItem(INSTALL_FLAG_KEY, 'true');
+            }
+
+            updateInstallVisibility();
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('service-worker.js').catch(() => {
+                    // Silent fail: app still works without offline mode.
+                });
+            }
+        });
     </script>
 </body>
 </html>

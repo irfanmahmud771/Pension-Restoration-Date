@@ -216,6 +216,7 @@
         const installHint = document.getElementById('installHint');
 
         let deferredInstallPrompt = null;
+        const INSTALL_FLAG_KEY = 'pensionRestoreInstalled';
 
         function calculateCalendarDifference(startDate, endDate) {
             const earlierDate = new Date(startDate);
@@ -259,11 +260,15 @@
         }
 
         function isRunningStandalone() {
-            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.startsWith('android-app://');
+        }
+
+        function isInstalled() {
+            return isRunningStandalone() || localStorage.getItem(INSTALL_FLAG_KEY) === 'true';
         }
 
         function updateInstallVisibility() {
-            const hideInstallCta = isRunningStandalone();
+            const hideInstallCta = isInstalled();
             installAppSection.classList.toggle('hidden', hideInstallCta);
             installAppBtn.disabled = !deferredInstallPrompt;
             installHint.classList.toggle('hidden', !!deferredInstallPrompt);
@@ -276,6 +281,7 @@
         });
 
         window.addEventListener('appinstalled', () => {
+            localStorage.setItem(INSTALL_FLAG_KEY, 'true');
             deferredInstallPrompt = null;
             updateInstallVisibility();
         });
@@ -415,6 +421,11 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             populateTable();
+
+            if (isRunningStandalone()) {
+                localStorage.setItem(INSTALL_FLAG_KEY, 'true');
+            }
+
             updateInstallVisibility();
 
             if ('serviceWorker' in navigator) {

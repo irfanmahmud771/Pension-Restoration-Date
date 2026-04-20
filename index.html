@@ -3,14 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Pension Restore">
     <title>Pension Restoration Date Calculator</title>
-    <link rel="manifest" href="manifest.webmanifest">
-    <link rel="icon" type="image/svg+xml" href="icons/icon-192.svg">
-    <link rel="apple-touch-icon" href="icons/icon-192.svg">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -68,14 +61,6 @@
                 <p class="text-gray-500 mt-2">Enter your details to calculate your pension restoration date.</p>
             </div>
 
-            <!-- App Install CTA -->
-            <div id="installAppSection" class="mb-6 hidden">
-                <button id="installAppBtn" class="w-full btn-primary font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Install App (Android / Windows)
-                </button>
-                <p id="installHint" class="text-xs text-center text-gray-500 mt-2 hidden">If install dialog doesn't appear, open browser menu and choose "Install app".</p>
-            </div>
-
             <!-- Form Section -->
             <div class="space-y-6">
                 <div>
@@ -102,7 +87,6 @@
                         <p class="text-gray-600"><strong>Effective Policy Date:</strong> <span id="policyDateResult" class="font-bold text-indigo-600"></span></p>
                         <p class="text-gray-600"><strong>Restoration Date:</strong> <span id="restorationDateResult"></span></p>
                         <p class="text-gray-600"><strong>Age at Restoration:</strong> <span id="ageAtRestorationResult" class="font-bold text-indigo-600"></span></p>
-                        <p class="text-gray-600"><strong>Period Remaing in Restoration:</strong> <span id="periodRemainingResult" class="font-bold text-indigo-600"></span></p>
                     </div>
                 </div>
             </div>
@@ -209,41 +193,7 @@
         const policyDateResultSpan = document.getElementById('policyDateResult');
         const restorationDateResultSpan = document.getElementById('restorationDateResult');
         const ageAtRestorationResultSpan = document.getElementById('ageAtRestorationResult');
-        const periodRemainingResultSpan = document.getElementById('periodRemainingResult');
         const tableBody = document.getElementById('commutationTableBody');
-        const installAppSection = document.getElementById('installAppSection');
-        const installAppBtn = document.getElementById('installAppBtn');
-        const installHint = document.getElementById('installHint');
-
-        let deferredInstallPrompt = null;
-        let installedByRelatedApps = false;
-        const INSTALL_FLAG_KEY = 'pensionRestoreInstalled';
-
-        function calculateCalendarDifference(startDate, endDate) {
-            const earlierDate = new Date(startDate);
-            const laterDate = new Date(endDate);
-
-            let years = laterDate.getFullYear() - earlierDate.getFullYear();
-            let months = laterDate.getMonth() - earlierDate.getMonth();
-            let days = laterDate.getDate() - earlierDate.getDate();
-
-            if (days < 0) {
-                months--;
-                const daysInPreviousMonth = new Date(laterDate.getFullYear(), laterDate.getMonth(), 0).getDate();
-                days += daysInPreviousMonth;
-            }
-
-            if (months < 0) {
-                years--;
-                months += 12;
-            }
-
-            return { years, months, days };
-        }
-
-        function formatPeriod(years, months, days) {
-            return `${years} ${years === 1 ? 'Year' : 'Years'}, ${months} ${months === 1 ? 'Month' : 'Months'}, ${days} ${days === 1 ? 'Day' : 'Days'}`;
-        }
 
         function populateTable() {
             tableBody.innerHTML = ''; // Clear existing rows
@@ -259,66 +209,6 @@
                 tableBody.appendChild(row);
             });
         }
-
-        function isRunningStandalone() {
-            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.startsWith('android-app://');
-        }
-
-        function isInstalled() {
-            return installedByRelatedApps || isRunningStandalone() || localStorage.getItem(INSTALL_FLAG_KEY) === 'true';
-        }
-
-        async function detectInstalledRelatedApps() {
-            if (!('getInstalledRelatedApps' in navigator)) {
-                return;
-            }
-
-            try {
-                const relatedApps = await navigator.getInstalledRelatedApps();
-                if (Array.isArray(relatedApps) && relatedApps.length > 0) {
-                    installedByRelatedApps = true;
-                    localStorage.setItem(INSTALL_FLAG_KEY, 'true');
-                }
-            } catch {
-                // Ignore API errors; fallback checks are still in place.
-            }
-            return isRunningStandalone() || localStorage.getItem(INSTALL_FLAG_KEY) === 'true';
-        }
-
-        function updateInstallVisibility() {
-            const hideInstallCta = isInstalled();
-            installAppSection.classList.toggle('hidden', hideInstallCta);
-            installAppBtn.disabled = !deferredInstallPrompt;
-            installHint.classList.toggle('hidden', !!deferredInstallPrompt);
-        }
-
-        window.addEventListener('beforeinstallprompt', (event) => {
-            event.preventDefault();
-            deferredInstallPrompt = event;
-            updateInstallVisibility();
-        });
-
-        window.addEventListener('appinstalled', () => {
-            localStorage.setItem(INSTALL_FLAG_KEY, 'true');
-            deferredInstallPrompt = null;
-            updateInstallVisibility();
-        });
-
-        installAppBtn.addEventListener('click', async () => {
-            if (!deferredInstallPrompt) {
-                updateInstallVisibility();
-                return;
-            }
-
-            deferredInstallPrompt.prompt();
-            const choiceResult = await deferredInstallPrompt.userChoice;
-            if (choiceResult?.outcome === 'accepted') {
-                localStorage.setItem(INSTALL_FLAG_KEY, 'true');
-            }
-            await deferredInstallPrompt.userChoice;
-            deferredInstallPrompt = null;
-            updateInstallVisibility();
-        });
 
         calculateBtn.addEventListener('click', () => {
             resultsDiv.classList.add('hidden');
@@ -339,7 +229,7 @@
                 messageDiv.textContent = 'Retirement Date must be after the Date of Birth.';
                 return;
             }
-
+            
             // --- ADJUSTMENT: Add 1 day to SOS for Age on Next Birthday calculation ---
             const adjustedSosDate = new Date(sosDate);
             adjustedSosDate.setDate(adjustedSosDate.getDate() + 1);
@@ -370,7 +260,7 @@
                 messageDiv.textContent = `Calculation is only available for 'Age on Next Birthday' between ${minAge} and ${maxAge}. Your calculated age is ${ageNextBirthday}.`;
                 return;
             }
-
+            
             let purchaseValue;
             let effectivePolicyDateStr;
             const date2001 = new Date('2001-12-01');
@@ -386,10 +276,10 @@
                 purchaseValue = record.val_1966;
                 effectivePolicyDateStr = '01 Jul, 1966';
             }
-
+            
             const yearsToAdd = Math.round(purchaseValue);
             // Restoration Date uses original SOS Date
-            const restorationDate = new Date(sosDate);
+            const restorationDate = new Date(sosDate); 
             restorationDate.setFullYear(restorationDate.getFullYear() + yearsToAdd);
 
             const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -399,32 +289,39 @@
             const formattedRestorationDate = `${day} ${monthName}, ${year}`;
 
             // --- "Age at Restoration" Calculation ---
-            const ageAtRestoration = calculateCalendarDifference(dobDate, restorationDate);
-            const formattedAgeAtRestoration = formatPeriod(
-                ageAtRestoration.years,
-                ageAtRestoration.months,
-                ageAtRestoration.days
-            );
+            let tempDob = new Date(dobValue);
+            let ageYearsAtRestoration = restorationDate.getFullYear() - tempDob.getFullYear();
+            let ageMonthsAtRestoration = restorationDate.getMonth() - tempDob.getMonth();
+            let ageDaysAtRestoration = restorationDate.getDate() - tempDob.getDate();
 
-            // --- Period Remaining in Restoration ---
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-
-            let formattedPeriodRemaining;
-            if (restorationDate <= today) {
-                formattedPeriodRemaining = '0 Years, 0 Months, 0 Days';
-            } else {
-                const periodRemaining = calculateCalendarDifference(today, restorationDate);
-                formattedPeriodRemaining = formatPeriod(
-                    periodRemaining.years,
-                    periodRemaining.months,
-                    periodRemaining.days
-                );
+             if (ageDaysAtRestoration < 0) {
+                ageMonthsAtRestoration--;
+                const daysInPrevMonth = new Date(restorationDate.getFullYear(), restorationDate.getMonth(), 0).getDate();
+                ageDaysAtRestoration += daysInPrevMonth;
+            }
+             if (ageMonthsAtRestoration < 0) {
+                ageYearsAtRestoration--;
+                ageMonthsAtRestoration += 12;
             }
 
-            // --- Conditional Formatting for Restoration Date ---
-            restorationDateResultSpan.classList.remove('text-green-600', 'text-red-600', 'font-bold', 'flashing-text');
+            // --- Format Age at Restoration with new rules ---
+            let ageParts = [];
+            ageParts.push(`${ageYearsAtRestoration} Years`);
 
+            if (ageMonthsAtRestoration > 0) {
+                ageParts.push(ageMonthsAtRestoration === 1 ? '1 Month' : `${ageMonthsAtRestoration} Months`);
+            }
+             if (ageDaysAtRestoration > 0) {
+                ageParts.push(ageDaysAtRestoration === 1 ? '1 Day' : `${ageDaysAtRestoration} Days`);
+            }
+            const formattedAgeAtRestoration = ageParts.join(' ');
+
+
+            // --- Conditional Formatting for Restoration Date ---
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); 
+            restorationDateResultSpan.classList.remove('text-green-600', 'text-red-600', 'font-bold', 'flashing-text');
+            
             if (restorationDate <= today) {
                 restorationDateResultSpan.classList.add('text-green-600', 'font-bold', 'flashing-text');
             } else {
@@ -437,27 +334,10 @@
             policyDateResultSpan.textContent = effectivePolicyDateStr;
             restorationDateResultSpan.textContent = formattedRestorationDate;
             ageAtRestorationResultSpan.textContent = formattedAgeAtRestoration;
-            periodRemainingResultSpan.textContent = formattedPeriodRemaining;
             resultsDiv.classList.remove('hidden');
         });
 
-        document.addEventListener('DOMContentLoaded', async () => {
-        document.addEventListener('DOMContentLoaded', () => {
-            populateTable();
-
-            if (isRunningStandalone()) {
-                localStorage.setItem(INSTALL_FLAG_KEY, 'true');
-            }
-
-            await detectInstalledRelatedApps();
-            updateInstallVisibility();
-
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('service-worker.js').catch(() => {
-                    // Silent fail: app still works without offline mode.
-                });
-            }
-        });
+        document.addEventListener('DOMContentLoaded', populateTable);
     </script>
 </body>
 </html>

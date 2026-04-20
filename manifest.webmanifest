@@ -2,6 +2,7 @@
   "name": "Pension Restoration Date Calculator",
   "short_name": "Pension Restore",
   "description": "Calculate pension restoration date and period remaining.",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

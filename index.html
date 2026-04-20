@@ -216,7 +216,6 @@
         const installHint = document.getElementById('installHint');
 
         let deferredInstallPrompt = null;
-        let installedByRelatedApps = false;
         const INSTALL_FLAG_KEY = 'pensionRestoreInstalled';
 
         function calculateCalendarDifference(startDate, endDate) {
@@ -265,23 +264,6 @@
         }
 
         function isInstalled() {
-            return installedByRelatedApps || isRunningStandalone() || localStorage.getItem(INSTALL_FLAG_KEY) === 'true';
-        }
-
-        async function detectInstalledRelatedApps() {
-            if (!('getInstalledRelatedApps' in navigator)) {
-                return;
-            }
-
-            try {
-                const relatedApps = await navigator.getInstalledRelatedApps();
-                if (Array.isArray(relatedApps) && relatedApps.length > 0) {
-                    installedByRelatedApps = true;
-                    localStorage.setItem(INSTALL_FLAG_KEY, 'true');
-                }
-            } catch {
-                // Ignore API errors; fallback checks are still in place.
-            }
             return isRunningStandalone() || localStorage.getItem(INSTALL_FLAG_KEY) === 'true';
         }
 
@@ -311,10 +293,6 @@
             }
 
             deferredInstallPrompt.prompt();
-            const choiceResult = await deferredInstallPrompt.userChoice;
-            if (choiceResult?.outcome === 'accepted') {
-                localStorage.setItem(INSTALL_FLAG_KEY, 'true');
-            }
             await deferredInstallPrompt.userChoice;
             deferredInstallPrompt = null;
             updateInstallVisibility();
@@ -441,7 +419,6 @@
             resultsDiv.classList.remove('hidden');
         });
 
-        document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('DOMContentLoaded', () => {
             populateTable();
 
@@ -449,7 +426,6 @@
                 localStorage.setItem(INSTALL_FLAG_KEY, 'true');
             }
 
-            await detectInstalledRelatedApps();
             updateInstallVisibility();
 
             if ('serviceWorker' in navigator) {

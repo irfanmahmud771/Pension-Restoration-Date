@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pension Restoration Date Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn-primary {
+            background-color: #4f46e5;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+        }
+        .result-box {
+            background-color: #f3f4f6;
+            border-left: 4px solid #4f46e5;
+        }
+        /* For table scrollbar styling */
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Flashing animation */
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+        .flashing-text {
+            animation: flash 1.5s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 py-10">
+    <div class="container mx-auto px-4">
+        <div class="card w-full max-w-lg mx-auto p-6 sm:p-8">
+            <!-- Header Section -->
+            <div class="text-center mb-8">
+                <h1 class="text-3xl font-bold text-gray-800">Pension Restoration Date Calculator</h1>
+                <p class="text-gray-500 mt-2">Enter your details to calculate your pension restoration date.</p>
+            </div>
+
+            <!-- Form Section -->
+            <div class="space-y-6">
+                <div>
+                    <label for="dob" class="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                    <input type="date" id="dob" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+                <div>
+                    <label for="sos" class="block text-sm font-medium text-gray-700 mb-1">Date of Retirement (SOS)</label>
+                    <input type="date" id="sos" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                </div>
+
+                <button id="calculateBtn" class="w-full btn-primary font-bold py-3 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Calculate
+                </button>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="mt-8 hidden">
+                 <div class="result-box p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Calculation Results:</h3>
+                    <div class="space-y-2">
+                        <p class="text-gray-600"><strong>Age on Next Birthday:</strong> <span id="ageResult" class="font-bold text-indigo-600"></span></p>
+                        <p class="text-gray-600"><strong>Purchase Factor:</strong> <span id="valueResult" class="font-bold text-indigo-600"></span></p>
+                        <p class="text-gray-600"><strong>Effective Policy Date:</strong> <span id="policyDateResult" class="font-bold text-indigo-600"></span></p>
+                        <p class="text-gray-600"><strong>Restoration Date:</strong> <span id="restorationDateResult"></span></p>
+                        <p class="text-gray-600"><strong>Age at Restoration:</strong> <span id="ageAtRestorationResult" class="font-bold text-indigo-600"></span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error/Message Section -->
+            <div id="message" class="mt-6 text-center text-red-500 font-medium"></div>
+        </div>
+
+        <!-- Commutation Table Section -->
+        <div class="card w-full max-w-4xl mx-auto p-6 sm:p-8 mt-10">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Commutation Table for Pension</h2>
+            <div class="table-container max-h-96 overflow-y-auto rounded-lg border">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Age Next Birthday</th>
+                            <th scope="col" class="px-6 py-3">Years Purchased (w.e.f 2001-12-01)</th>
+                            <th scope="col" class="px-6 py-3">Years Purchased (w.e.f 1986-07-01)</th>
+                            <th scope="col" class="px-6 py-3">Years Purchased (w.e.f 1966-07-01)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="commutationTableBody">
+                        <!-- Rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        // Data derived from the provided CSV file, now extended
+        const pensionData = [
+            { age: 20, val_2001: 40.5043, val_1986: 50.6304, val_1966: 24.265 },
+            { age: 21, val_2001: 39.7341, val_1986: 49.6676, val_1966: 24.061 },
+            { age: 22, val_2001: 38.9653, val_1986: 48.7066, val_1966: 23.853 },
+            { age: 23, val_2001: 38.1974, val_1986: 47.7467, val_1966: 23.64 },
+            { age: 24, val_2001: 37.4307, val_1986: 46.7884, val_1966: 23.424 },
+            { age: 25, val_2001: 36.6651, val_1986: 45.8314, val_1966: 23.203 },
+            { age: 26, val_2001: 35.9006, val_1986: 44.8758, val_1966: 22.978 },
+            { age: 27, val_2001: 35.1372, val_1986: 43.9215, val_1966: 22.747 },
+            { age: 28, val_2001: 34.375, val_1986: 42.9688, val_1966: 22.513 },
+            { age: 29, val_2001: 33.6143, val_1986: 42.0179, val_1966: 22.273 },
+            { age: 30, val_2001: 32.8071, val_1986: 41.0089, val_1966: 22.028 },
+            { age: 31, val_2001: 32.0974, val_1986: 40.1218, val_1966: 21.077 },
+            { age: 32, val_2001: 31.3412, val_1986: 39.1767, val_1966: 21.522 },
+            { age: 33, val_2001: 30.5869, val_1986: 38.2336, val_1966: 21.26 },
+            { age: 34, val_2001: 29.8343, val_1986: 37.2929, val_1966: 20.993 },
+            { age: 35, val_2001: 29.0841, val_1986: 36.3551, val_1966: 20.72 },
+            { age: 36, val_2001: 28.3362, val_1986: 35.4203, val_1966: 20.442 },
+            { age: 37, val_2001: 27.5908, val_1986: 34.4885, val_1966: 20.157 },
+            { age: 38, val_2001: 26.8482, val_1986: 33.5603, val_1966: 19.867 },
+            { age: 39, val_2001: 26.1009, val_1986: 32.6361, val_1966: 19.57 },
+            { age: 40, val_2001: 25.3728, val_1986: 31.716, val_1966: 19.267 },
+            { age: 41, val_2001: 24.6406, val_1986: 30.8007, val_1966: 18.956 },
+            { age: 42, val_2001: 23.9126, val_1986: 29.8907, val_1966: 18.641 },
+            { age: 43, val_2001: 23.184, val_1986: 28.98, val_1966: 18.318 },
+            { age: 44, val_2001: 22.4713, val_1986: 28.0891, val_1966: 17.988 },
+            { age: 45, val_2001: 21.7592, val_1986: 27.199, val_1966: 17.65 },
+            { age: 46, val_2001: 21.0538, val_1986: 26.3172, val_1966: 17.307 },
+            { age: 47, val_2001: 20.3555, val_1986: 25.4444, val_1966: 16.956 },
+            { age: 48, val_2001: 19.6653, val_1986: 24.5816, val_1966: 16.596 },
+            { age: 49, val_2001: 18.9841, val_1986: 23.7301, val_1966: 16.231 },
+            { age: 50, val_2001: 18.3129, val_1986: 22.8911, val_1966: 15.859 },
+            { age: 51, val_2001: 17.6526, val_1986: 22.0658, val_1966: 15.481 },
+            { age: 52, val_2001: 17.005, val_1986: 21.2563, val_1966: 15.096 },
+            { age: 53, val_2001: 16.371, val_1986: 20.638, val_1966: 14.707 },
+            { age: 54, val_2001: 15.7517, val_1986: 19.6896, val_1966: 14.313 },
+            { age: 55, val_2001: 15.1478, val_1986: 18.9348, val_1966: 13.915 },
+            { age: 56, val_2001: 14.5602, val_1986: 18.2002, val_1966: 13.513 },
+            { age: 57, val_2001: 13.9888, val_1986: 17.486, val_1966: 13.109 },
+            { age: 58, val_2001: 13.434, val_1986: 16.7925, val_1966: 12.702 },
+            { age: 59, val_2001: 12.8953, val_1986: 16.1191, val_1966: 12.294 },
+            { age: 60, val_2001: 12.3719, val_1986: 15.4649, val_1966: 11.886 },
+            { age: 61, val_2001: 11.8632, val_1986: 14.829, val_1966: 11.497 },
+            { age: 62, val_2001: 11.3684, val_1986: 14.2105, val_1966: 11.104 },
+            { age: 63, val_2001: 10.8872, val_1986: 13.609, val_1966: 10.713 },
+            { age: 64, val_2001: 10.4191, val_1986: 13.0239, val_1966: 10.327 },
+            { age: 65, val_2001: 9.9636, val_1986: 12.4549, val_1966: 9.946 },
+            { age: 66, val_2001: 9.5214, val_1986: 11.9017, val_1966: 9.57 },
+            { age: 67, val_2001: 9.0914, val_1986: 11.3643, val_1966: 9.2 },
+            { age: 68, val_2001: 8.6742, val_1986: 10.5428, val_1966: 8.836 },
+            { age: 69, val_2001: 8.2697, val_1986: 10.3371, val_1966: 8.478 },
+            { age: 70, val_2001: 7.8778, val_1986: 9.8472, val_1966: 8.127 },
+            { age: 71, val_2001: 7.4983, val_1986: 9.3729, val_1966: 7.783 },
+            { age: 72, val_2001: 7.1314, val_1986: 8.9142, val_1966: 7.448 },
+            { age: 73, val_2001: 6.7766, val_1986: 8.4708, val_1966: 7.121 },
+            { age: 74, val_2001: 6.4342, val_1986: 8.0427, val_1966: 6.802 },
+            { age: 75, val_2001: 6.1039, val_1986: 7.6299, val_1966: 6.494 },
+            { age: 76, val_2001: 5.7858, val_1986: 7.2322, val_1966: 6.194 },
+            { age: 77, val_2001: 5.4797, val_1986: 6.8496, val_1966: 5.906 },
+            { age: 78, val_2001: 5.1854, val_1986: 6.4818, val_1966: 5.627 },
+            { age: 79, val_2001: 4.903, val_1986: 6.1284, val_1966: 5.364 },
+            { age: 80, val_2001: 4.6321, val_1986: 5.7901, val_1966: 5.104 }
+        ];
+
+        const dobInput = document.getElementById('dob');
+        const sosInput = document.getElementById('sos');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultsDiv = document.getElementById('results');
+        const messageDiv = document.getElementById('message');
+        const ageResultSpan = document.getElementById('ageResult');
+        const valueResultSpan = document.getElementById('valueResult');
+        const policyDateResultSpan = document.getElementById('policyDateResult');
+        const restorationDateResultSpan = document.getElementById('restorationDateResult');
+        const ageAtRestorationResultSpan = document.getElementById('ageAtRestorationResult');
+        const tableBody = document.getElementById('commutationTableBody');
+
+        function populateTable() {
+            tableBody.innerHTML = ''; // Clear existing rows
+            pensionData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">${item.age}</td>
+                    <td class="px-6 py-4">${item.val_2001.toFixed(4)}</td>
+                    <td class="px-6 py-4">${item.val_1986.toFixed(4)}</td>
+                    <td class="px-6 py-4">${item.val_1966.toFixed(3)}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        calculateBtn.addEventListener('click', () => {
+            resultsDiv.classList.add('hidden');
+            messageDiv.textContent = '';
+
+            const dobValue = dobInput.value;
+            const sosValue = sosInput.value;
+
+            if (!dobValue || !sosValue) {
+                messageDiv.textContent = 'Please enter both Date of Birth and Retirement Date.';
+                return;
+            }
+
+            const dobDate = new Date(dobValue);
+            const sosDate = new Date(sosValue);
+
+            if (sosDate <= dobDate) {
+                messageDiv.textContent = 'Retirement Date must be after the Date of Birth.';
+                return;
+            }
+            
+            // --- ADJUSTMENT: Add 1 day to SOS for Age on Next Birthday calculation ---
+            const adjustedSosDate = new Date(sosDate);
+            adjustedSosDate.setDate(adjustedSosDate.getDate() + 1);
+
+            // --- Revised "Age on Next Birthday" Calculation (using adjustedSosDate) ---
+            let ageYears = adjustedSosDate.getFullYear() - dobDate.getFullYear();
+            const monthDiff = adjustedSosDate.getMonth() - dobDate.getMonth();
+            const dayDiff = adjustedSosDate.getDate() - dobDate.getDate();
+
+            // Check if the birthday has occurred in the retirement year
+            if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+                ageYears--;
+            }
+
+            let ageNextBirthday;
+            // Check if retirement is exactly on the birthday
+            if (monthDiff === 0 && dayDiff === 0) {
+                ageNextBirthday = ageYears;
+            } else {
+                ageNextBirthday = ageYears + 1;
+            }
+
+            const record = pensionData.find(d => d.age === ageNextBirthday);
+
+            if (!record) {
+                const minAge = pensionData[0].age;
+                const maxAge = pensionData[pensionData.length - 1].age;
+                messageDiv.textContent = `Calculation is only available for 'Age on Next Birthday' between ${minAge} and ${maxAge}. Your calculated age is ${ageNextBirthday}.`;
+                return;
+            }
+            
+            let purchaseValue;
+            let effectivePolicyDateStr;
+            const date2001 = new Date('2001-12-01');
+            const date1986 = new Date('1986-07-01');
+
+            if (sosDate >= date2001) {
+                purchaseValue = record.val_2001;
+                effectivePolicyDateStr = '01 Dec, 2001';
+            } else if (sosDate >= date1986) {
+                purchaseValue = record.val_1986;
+                effectivePolicyDateStr = '01 Jul, 1986';
+            } else {
+                purchaseValue = record.val_1966;
+                effectivePolicyDateStr = '01 Jul, 1966';
+            }
+            
+            const yearsToAdd = Math.round(purchaseValue);
+            // Restoration Date uses original SOS Date
+            const restorationDate = new Date(sosDate); 
+            restorationDate.setFullYear(restorationDate.getFullYear() + yearsToAdd);
+
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const day = String(restorationDate.getDate()).padStart(2, '0');
+            const monthName = months[restorationDate.getMonth()];
+            const year = restorationDate.getFullYear();
+            const formattedRestorationDate = `${day} ${monthName}, ${year}`;
+
+            // --- "Age at Restoration" Calculation ---
+            let tempDob = new Date(dobValue);
+            let ageYearsAtRestoration = restorationDate.getFullYear() - tempDob.getFullYear();
+            let ageMonthsAtRestoration = restorationDate.getMonth() - tempDob.getMonth();
+            let ageDaysAtRestoration = restorationDate.getDate() - tempDob.getDate();
+
+             if (ageDaysAtRestoration < 0) {
+                ageMonthsAtRestoration--;
+                const daysInPrevMonth = new Date(restorationDate.getFullYear(), restorationDate.getMonth(), 0).getDate();
+                ageDaysAtRestoration += daysInPrevMonth;
+            }
+             if (ageMonthsAtRestoration < 0) {
+                ageYearsAtRestoration--;
+                ageMonthsAtRestoration += 12;
+            }
+
+            // --- Format Age at Restoration with new rules ---
+            let ageParts = [];
+            ageParts.push(`${ageYearsAtRestoration} Years`);
+
+            if (ageMonthsAtRestoration > 0) {
+                ageParts.push(ageMonthsAtRestoration === 1 ? '1 Month' : `${ageMonthsAtRestoration} Months`);
+            }
+             if (ageDaysAtRestoration > 0) {
+                ageParts.push(ageDaysAtRestoration === 1 ? '1 Day' : `${ageDaysAtRestoration} Days`);
+            }
+            const formattedAgeAtRestoration = ageParts.join(' ');
+
+
+            // --- Conditional Formatting for Restoration Date ---
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); 
+            restorationDateResultSpan.classList.remove('text-green-600', 'text-red-600', 'font-bold', 'flashing-text');
+            
+            if (restorationDate <= today) {
+                restorationDateResultSpan.classList.add('text-green-600', 'font-bold', 'flashing-text');
+            } else {
+                restorationDateResultSpan.classList.add('text-red-600', 'font-bold');
+            }
+
+            // --- Update UI ---
+            ageResultSpan.textContent = ageNextBirthday;
+            valueResultSpan.textContent = purchaseValue.toFixed(4);
+            policyDateResultSpan.textContent = effectivePolicyDateStr;
+            restorationDateResultSpan.textContent = formattedRestorationDate;
+            ageAtRestorationResultSpan.textContent = formattedAgeAtRestoration;
+            resultsDiv.classList.remove('hidden');
+        });
+
+        document.addEventListener('DOMContentLoaded', populateTable);
+    </script>
+</body>
+</html>

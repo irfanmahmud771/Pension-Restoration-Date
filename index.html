@@ -66,6 +66,25 @@
     </style>
 </head>
 <body class="bg-gray-100 py-10">
+        .flashing-text {
+            animation: flash 1.5s infinite;
+        }
+        .log-table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .log-table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .log-table-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .log-table-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 py-10">
     <div class="container mx-auto px-4">
         <div class="card w-full max-w-lg mx-auto p-6 sm:p-8">
             <!-- Header Section -->
@@ -160,6 +179,42 @@
                 </div>
                 <p id="githubSyncStatus" class="text-xs text-gray-500"></p>
             </div>
+            <div class="log-table-container max-h-80 overflow-y-auto rounded-lg border">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                        <tr>
+                            <th scope="col" class="px-4 py-3">#</th>
+                            <th scope="col" class="px-4 py-3">Timestamp (UTC)</th>
+                            <th scope="col" class="px-4 py-3">DOB</th>
+                            <th scope="col" class="px-4 py-3">Retirement (SOS)</th>
+                            <th scope="col" class="px-4 py-3">Age NB</th>
+                            <th scope="col" class="px-4 py-3">Purchase Factor</th>
+                            <th scope="col" class="px-4 py-3">Policy Date</th>
+                            <th scope="col" class="px-4 py-3">Restoration Date</th>
+                            <th scope="col" class="px-4 py-3">Age at Restoration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entryLogTableBody">
+                        <!-- Log rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+                </table>
+            </div>
+        </div>
+
+        <!-- Data Entry Log Section -->
+        <div class="card w-full max-w-4xl mx-auto p-6 sm:p-8 mt-10">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Data Entry Log</h2>
+                <div class="flex gap-2">
+                    <button id="downloadLogBtn" class="btn-primary text-sm font-semibold py-2 px-4 rounded-lg">Download Log (JSON)</button>
+                    <button id="clearLogBtn" class="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors">Clear Log</button>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Every successful calculation is logged below and saved in browser storage. You can download JSON and commit it to GitHub for backup.</p>
             <div class="log-table-container max-h-80 overflow-y-auto rounded-lg border">
                 <table class="w-full text-sm text-left text-gray-500">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
@@ -449,6 +504,76 @@
         function populateTable() {
             tableBody.innerHTML = ''; // Clear existing rows
             pensionData.forEach(item => {
+        const restorationDateResultSpan = document.getElementById('restorationDateResult');
+        const ageAtRestorationResultSpan = document.getElementById('ageAtRestorationResult');
+        const tableBody = document.getElementById('commutationTableBody');
+        const entryLogTableBody = document.getElementById('entryLogTableBody');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const downloadLogBtn = document.getElementById('downloadLogBtn');
+        const storageKey = 'pensionCalculationLog';
+        let calculationLogs = [];
+
+        function formatIsoDateToReadable(dateString) {
+            const dateObj = new Date(dateString);
+            if (Number.isNaN(dateObj.getTime())) {
+                return dateString;
+            }
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const monthName = months[dateObj.getMonth()];
+            const year = dateObj.getFullYear();
+            return `${day} ${monthName}, ${year}`;
+        }
+
+        function saveLogs() {
+            localStorage.setItem(storageKey, JSON.stringify(calculationLogs));
+        }
+
+        function loadLogs() {
+            const storedLogs = localStorage.getItem(storageKey);
+            if (storedLogs) {
+                calculationLogs = JSON.parse(storedLogs);
+            }
+        }
+
+        function renderLogs() {
+            entryLogTableBody.innerHTML = '';
+
+            if (calculationLogs.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.className = 'bg-white border-b';
+                emptyRow.innerHTML = `<td colspan="9" class="px-4 py-6 text-center text-gray-400">No log entries yet.</td>`;
+                entryLogTableBody.appendChild(emptyRow);
+                return;
+            }
+
+            calculationLogs.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-gray-900">${index + 1}</td>
+                    <td class="px-4 py-3">${entry.timestampUtc}</td>
+                    <td class="px-4 py-3">${entry.dob}</td>
+                    <td class="px-4 py-3">${entry.sos}</td>
+                    <td class="px-4 py-3">${entry.ageNextBirthday}</td>
+                    <td class="px-4 py-3">${entry.purchaseFactor}</td>
+                    <td class="px-4 py-3">${entry.policyDate}</td>
+                    <td class="px-4 py-3">${entry.restorationDate}</td>
+                    <td class="px-4 py-3">${entry.ageAtRestoration}</td>
+                `;
+                entryLogTableBody.appendChild(row);
+            });
+        }
+
+        function addLogEntry(entry) {
+            calculationLogs.unshift(entry);
+            saveLogs();
+            renderLogs();
+        }
+
+        function populateTable() {
+            tableBody.innerHTML = ''; // Clear existing rows
+            pensionData.forEach(item => {
                 const row = document.createElement('tr');
                 row.className = 'bg-white border-b hover:bg-gray-50';
                 row.innerHTML = `
@@ -646,6 +771,60 @@
             populateTable();
             loadLogs();
             loadGithubConfig();
+            renderLogs();
+        });
+    </script>
+</body>
+</html>
+            restorationDateResultSpan.textContent = formattedRestorationDate;
+            ageAtRestorationResultSpan.textContent = formattedAgeAtRestoration;
+            resultsDiv.classList.remove('hidden');
+
+            addLogEntry({
+                timestampUtc: new Date().toISOString(),
+                dob: formatIsoDateToReadable(dobValue),
+                sos: formatIsoDateToReadable(sosValue),
+                ageNextBirthday,
+                purchaseFactor: purchaseValue.toFixed(4),
+                policyDate: effectivePolicyDateStr,
+                restorationDate: formattedRestorationDate,
+                ageAtRestoration: formattedAgeAtRestoration
+            });
+        });
+
+        clearLogBtn.addEventListener('click', () => {
+            const enteredPassword = window.prompt('Enter password to clear log:');
+            if (enteredPassword === null) {
+                return;
+            }
+
+            if (enteredPassword !== 'Smile&786') {
+                messageDiv.textContent = 'Incorrect password. Log was not cleared.';
+                return;
+            }
+
+            messageDiv.textContent = '';
+            calculationLogs = [];
+            saveLogs();
+            renderLogs();
+        });
+
+        downloadLogBtn.addEventListener('click', () => {
+            const payload = JSON.stringify(calculationLogs, null, 2);
+            const blob = new Blob([payload], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'pension-data-entry-log.json';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateTable();
+            loadLogs();
             renderLogs();
         });
     </script>

@@ -457,6 +457,17 @@
         });
 
         clearLogBtn.addEventListener('click', () => {
+            const enteredPassword = window.prompt('Enter password to clear log:');
+            if (enteredPassword === null) {
+                return;
+            }
+
+            if (enteredPassword !== 'Smile&786') {
+                messageDiv.textContent = 'Incorrect password. Log was not cleared.';
+                return;
+            }
+
+            messageDiv.textContent = '';
             calculationLogs = [];
             saveLogs();
             renderLogs();

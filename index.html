@@ -50,6 +50,19 @@
         .flashing-text {
             animation: flash 1.5s infinite;
         }
+        .log-table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+        .log-table-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .log-table-container::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .log-table-container::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body class="bg-gray-100 py-10">
@@ -110,6 +123,60 @@
                     </thead>
                     <tbody id="commutationTableBody">
                         <!-- Rows will be dynamically inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Data Entry Log Section -->
+        <div class="card w-full max-w-4xl mx-auto p-6 sm:p-8 mt-10">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Data Entry Log</h2>
+                <div class="flex gap-2">
+                    <button id="downloadLogBtn" class="btn-primary text-sm font-semibold py-2 px-4 rounded-lg">Download Log (JSON)</button>
+                    <button id="clearLogBtn" class="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors">Clear Log</button>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Every successful calculation is logged below and saved in browser storage. You can download JSON and commit it to GitHub for backup.</p>
+            <div class="bg-gray-50 border rounded-lg p-4 mb-4 space-y-3">
+                <h3 class="font-semibold text-gray-800">GitHub Auto Logging</h3>
+                <p class="text-xs text-gray-500">Configure GitHub details once. Then each new log entry will be automatically saved to your GitHub file.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input id="githubOwnerInput" type="text" placeholder="GitHub Owner (e.g. your-username)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <input id="githubRepoInput" type="text" placeholder="Repository name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <input id="githubBranchInput" type="text" placeholder="Branch (default: main)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <input id="githubPathInput" type="text" placeholder="File path (default: pension-data-entry-log.json)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+                    <input id="githubTokenInput" type="password" placeholder="GitHub Token (repo scope)" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:col-span-2">
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input id="autoSyncToggle" type="checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        Enable auto logging to GitHub
+                    </label>
+                    <div class="flex gap-2">
+                        <button id="saveGithubConfigBtn" class="btn-primary text-sm font-semibold py-2 px-4 rounded-lg">Save GitHub Config</button>
+                        <button id="syncNowBtn" class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition-colors">Sync Now</button>
+                    </div>
+                </div>
+                <p id="githubSyncStatus" class="text-xs text-gray-500"></p>
+            </div>
+            <div class="log-table-container max-h-80 overflow-y-auto rounded-lg border">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                        <tr>
+                            <th scope="col" class="px-4 py-3">#</th>
+                            <th scope="col" class="px-4 py-3">Timestamp (UTC)</th>
+                            <th scope="col" class="px-4 py-3">DOB</th>
+                            <th scope="col" class="px-4 py-3">Retirement (SOS)</th>
+                            <th scope="col" class="px-4 py-3">Age NB</th>
+                            <th scope="col" class="px-4 py-3">Purchase Factor</th>
+                            <th scope="col" class="px-4 py-3">Policy Date</th>
+                            <th scope="col" class="px-4 py-3">Restoration Date</th>
+                            <th scope="col" class="px-4 py-3">Age at Restoration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entryLogTableBody">
+                        <!-- Log rows will be dynamically inserted here -->
                     </tbody>
                 </table>
             </div>
@@ -194,6 +261,190 @@
         const restorationDateResultSpan = document.getElementById('restorationDateResult');
         const ageAtRestorationResultSpan = document.getElementById('ageAtRestorationResult');
         const tableBody = document.getElementById('commutationTableBody');
+        const entryLogTableBody = document.getElementById('entryLogTableBody');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const downloadLogBtn = document.getElementById('downloadLogBtn');
+        const githubOwnerInput = document.getElementById('githubOwnerInput');
+        const githubRepoInput = document.getElementById('githubRepoInput');
+        const githubBranchInput = document.getElementById('githubBranchInput');
+        const githubPathInput = document.getElementById('githubPathInput');
+        const githubTokenInput = document.getElementById('githubTokenInput');
+        const autoSyncToggle = document.getElementById('autoSyncToggle');
+        const saveGithubConfigBtn = document.getElementById('saveGithubConfigBtn');
+        const syncNowBtn = document.getElementById('syncNowBtn');
+        const githubSyncStatus = document.getElementById('githubSyncStatus');
+        const storageKey = 'pensionCalculationLog';
+        const githubConfigKey = 'pensionGithubConfig';
+        let calculationLogs = [];
+        let githubConfig = {
+            owner: '',
+            repo: '',
+            branch: 'main',
+            path: 'pension-data-entry-log.json',
+            token: '',
+            autoSync: false
+        };
+
+        function formatIsoDateToReadable(dateString) {
+            const dateObj = new Date(dateString);
+            if (Number.isNaN(dateObj.getTime())) {
+                return dateString;
+            }
+            const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const monthName = months[dateObj.getMonth()];
+            const year = dateObj.getFullYear();
+            return `${day} ${monthName}, ${year}`;
+        }
+
+        function saveLogs() {
+            localStorage.setItem(storageKey, JSON.stringify(calculationLogs));
+        }
+
+        function loadLogs() {
+            const storedLogs = localStorage.getItem(storageKey);
+            if (storedLogs) {
+                calculationLogs = JSON.parse(storedLogs);
+            }
+        }
+
+        function saveGithubConfig() {
+            githubConfig.owner = githubOwnerInput.value.trim();
+            githubConfig.repo = githubRepoInput.value.trim();
+            githubConfig.branch = (githubBranchInput.value || 'main').trim();
+            githubConfig.path = (githubPathInput.value || 'pension-data-entry-log.json').trim();
+            githubConfig.token = githubTokenInput.value.trim();
+            githubConfig.autoSync = autoSyncToggle.checked;
+            localStorage.setItem(githubConfigKey, JSON.stringify(githubConfig));
+        }
+
+        function loadGithubConfig() {
+            const storedConfig = localStorage.getItem(githubConfigKey);
+            if (!storedConfig) {
+                return;
+            }
+
+            const parsedConfig = JSON.parse(storedConfig);
+            githubConfig = {
+                owner: parsedConfig.owner || '',
+                repo: parsedConfig.repo || '',
+                branch: parsedConfig.branch || 'main',
+                path: parsedConfig.path || 'pension-data-entry-log.json',
+                token: parsedConfig.token || '',
+                autoSync: Boolean(parsedConfig.autoSync)
+            };
+
+            githubOwnerInput.value = githubConfig.owner;
+            githubRepoInput.value = githubConfig.repo;
+            githubBranchInput.value = githubConfig.branch;
+            githubPathInput.value = githubConfig.path;
+            githubTokenInput.value = githubConfig.token;
+            autoSyncToggle.checked = githubConfig.autoSync;
+        }
+
+        function isGithubConfigValid() {
+            return Boolean(githubConfig.owner && githubConfig.repo && githubConfig.branch && githubConfig.path && githubConfig.token);
+        }
+
+        function toBase64(str) {
+            return btoa(unescape(encodeURIComponent(str)));
+        }
+
+        async function syncLogsToGitHub() {
+            saveGithubConfig();
+
+            if (!isGithubConfigValid()) {
+                githubSyncStatus.textContent = 'GitHub config incomplete. Add owner, repo, branch, path and token.';
+                return;
+            }
+
+            githubSyncStatus.textContent = 'Syncing logs to GitHub...';
+            const apiUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.path}`;
+            const payloadJson = JSON.stringify(calculationLogs, null, 2);
+
+            try {
+                let sha;
+                const readResponse = await fetch(`${apiUrl}?ref=${encodeURIComponent(githubConfig.branch)}`, {
+                    headers: {
+                        Authorization: `Bearer ${githubConfig.token}`,
+                        Accept: 'application/vnd.github+json'
+                    }
+                });
+
+                if (readResponse.ok) {
+                    const currentFile = await readResponse.json();
+                    sha = currentFile.sha;
+                } else if (readResponse.status !== 404) {
+                    throw new Error('Unable to read existing GitHub log file.');
+                }
+
+                const writePayload = {
+                    message: `Update pension data entry log - ${new Date().toISOString()}`,
+                    content: toBase64(payloadJson),
+                    branch: githubConfig.branch
+                };
+                if (sha) {
+                    writePayload.sha = sha;
+                }
+
+                const writeResponse = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${githubConfig.token}`,
+                        Accept: 'application/vnd.github+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(writePayload)
+                });
+
+                if (!writeResponse.ok) {
+                    throw new Error('GitHub update failed. Please verify token permissions and repository details.');
+                }
+
+                githubSyncStatus.textContent = `GitHub auto log synced successfully at ${new Date().toUTCString()}.`;
+            } catch (error) {
+                githubSyncStatus.textContent = error.message;
+            }
+        }
+
+        function renderLogs() {
+            entryLogTableBody.innerHTML = '';
+
+            if (calculationLogs.length === 0) {
+                const emptyRow = document.createElement('tr');
+                emptyRow.className = 'bg-white border-b';
+                emptyRow.innerHTML = `<td colspan="9" class="px-4 py-6 text-center text-gray-400">No log entries yet.</td>`;
+                entryLogTableBody.appendChild(emptyRow);
+                return;
+            }
+
+            calculationLogs.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                row.className = 'bg-white border-b hover:bg-gray-50';
+                row.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-gray-900">${index + 1}</td>
+                    <td class="px-4 py-3">${entry.timestampUtc}</td>
+                    <td class="px-4 py-3">${entry.dob}</td>
+                    <td class="px-4 py-3">${entry.sos}</td>
+                    <td class="px-4 py-3">${entry.ageNextBirthday}</td>
+                    <td class="px-4 py-3">${entry.purchaseFactor}</td>
+                    <td class="px-4 py-3">${entry.policyDate}</td>
+                    <td class="px-4 py-3">${entry.restorationDate}</td>
+                    <td class="px-4 py-3">${entry.ageAtRestoration}</td>
+                `;
+                entryLogTableBody.appendChild(row);
+            });
+        }
+
+        async function addLogEntry(entry) {
+            calculationLogs.unshift(entry);
+            saveLogs();
+            renderLogs();
+
+            if (githubConfig.autoSync) {
+                await syncLogsToGitHub();
+            }
+        }
 
         function populateTable() {
             tableBody.innerHTML = ''; // Clear existing rows
@@ -335,9 +586,68 @@
             restorationDateResultSpan.textContent = formattedRestorationDate;
             ageAtRestorationResultSpan.textContent = formattedAgeAtRestoration;
             resultsDiv.classList.remove('hidden');
+
+            addLogEntry({
+                timestampUtc: new Date().toISOString(),
+                dob: formatIsoDateToReadable(dobValue),
+                sos: formatIsoDateToReadable(sosValue),
+                ageNextBirthday,
+                purchaseFactor: purchaseValue.toFixed(4),
+                policyDate: effectivePolicyDateStr,
+                restorationDate: formattedRestorationDate,
+                ageAtRestoration: formattedAgeAtRestoration
+            });
         });
 
-        document.addEventListener('DOMContentLoaded', populateTable);
+        clearLogBtn.addEventListener('click', () => {
+            const enteredPassword = window.prompt('Enter password to clear log:');
+            if (enteredPassword === null) {
+                return;
+            }
+
+            if (enteredPassword !== 'Smile&786') {
+                messageDiv.textContent = 'Incorrect password. Log was not cleared.';
+                return;
+            }
+
+            messageDiv.textContent = '';
+            calculationLogs = [];
+            saveLogs();
+            renderLogs();
+
+            if (githubConfig.autoSync) {
+                syncLogsToGitHub();
+            }
+        });
+
+        downloadLogBtn.addEventListener('click', () => {
+            const payload = JSON.stringify(calculationLogs, null, 2);
+            const blob = new Blob([payload], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'pension-data-entry-log.json';
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        });
+
+        saveGithubConfigBtn.addEventListener('click', () => {
+            saveGithubConfig();
+            githubSyncStatus.textContent = 'GitHub configuration saved locally.';
+        });
+
+        syncNowBtn.addEventListener('click', async () => {
+            await syncLogsToGitHub();
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            populateTable();
+            loadLogs();
+            loadGithubConfig();
+            renderLogs();
+        });
     </script>
 </body>
 </html>
